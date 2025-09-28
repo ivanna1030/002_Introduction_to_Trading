@@ -5,6 +5,7 @@ import optuna
 
 from backtest import backtest, params_backtest
 from plots import plot_portfolio_value
+from metrics import evaluate_metrics
 
 def main():
     data = pd.read_csv('data/aapl_5m_train.csv').dropna()
@@ -30,6 +31,9 @@ def main():
     historic['Datetime'] = pd.to_datetime(historic['Datetime'])
     historic = historic.set_index('Datetime')
     historic['Portfolio Value'] = portfolio_value
+
+    print("Performance metrics:")
+    print(evaluate_metrics(pd.Series(portfolio_value)))
 
     plot_portfolio_value(historic)
 
