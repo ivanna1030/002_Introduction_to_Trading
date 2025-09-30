@@ -175,11 +175,19 @@ def params_backtest(data, params, cash):
 
     portfolio_value = []
 
+    positive_trades = 0
+    negative_trades = 0
+
     for i, row in historic.iterrows():
         # Close long positions
         for position in active_long_positions.copy():
             if row.Close > position.take_profit or row.Close < position.stop_loss:
+                pnl = (row.Close - position.price) * position.n_shares * (1 - COM)
                 cash += row.Close * position.n_shares * (1 - COM)
+                if pnl >= 0:
+                    positive_trades += 1
+                else:
+                    negative_trades += 1
                 active_long_positions.remove(position)
 
         # Close short positions
@@ -189,6 +197,10 @@ def params_backtest(data, params, cash):
                 initial_sell = position.price * position.n_shares
                 pnl = initial_sell - cover_cost
                 cash += pnl
+                if pnl >= 0:
+                    positive_trades += 1
+                else:
+                    negative_trades += 1
                 active_short_positions.remove(position)
                 continue
 
@@ -232,7 +244,13 @@ def params_backtest(data, params, cash):
         portfolio_value.append(get_portfolio_value(cash, active_long_positions, active_short_positions, row.Close, n_shares, COM))
 
     # Close long positions        
-    cash += row.Close * len(active_long_positions) * n_shares * (1 - COM)
+    for position in active_long_positions:
+        pnl = (row.Close - position.price) * position.n_shares * (1 - COM)
+        cash += row.Close * position.n_shares * (1 - COM)
+        if pnl >= 0:
+            positive_trades += 1
+        else:
+            negative_trades += 1
 
     # Close short positions
     for position in active_short_positions:
@@ -240,8 +258,14 @@ def params_backtest(data, params, cash):
         initial_sell = position.price * position.n_shares
         pnl = initial_sell - cover_cost
         cash += pnl
+        if pnl >= 0:
+            positive_trades += 1
+        else:
+            negative_trades += 1
 
     active_long_positions = []
     active_short_positions = []
 
-    return cash, portfolio_value
+    win_rate = positive_trades / (positive_trades + negative_trades) if (positive_trades + negative_trades) > 0 else 0
+
+    return cash, portfolio_value, win_rate

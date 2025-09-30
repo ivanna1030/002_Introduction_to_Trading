@@ -48,4 +48,4 @@ def evaluate_metrics(portfolio_values: pd.Series) -> pd.DataFrame:
         'Max drawdown': max_drawdown(portfolio_values),
         'Calmar ratio': calmar_ratio(portfolio_values)
     }
-    return pd.DataFrame([metrics])
+    return pd.DataFrame([metrics], index=['Value'])
