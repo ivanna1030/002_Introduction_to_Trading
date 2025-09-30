@@ -3,6 +3,7 @@ import ta
 
 from models import Operation
 from signals import rsi_signals
+from metrics import max_drawdown, calmar_ratio
 
 def get_portfolio_value(cash: float, long_ops: list[Operation], short_ops: list[Operation], current_price:float, n_shares: int, COM: float) -> float:
     val = cash
@@ -19,18 +20,17 @@ def get_portfolio_value(cash: float, long_ops: list[Operation], short_ops: list[
     return val
 
 def backtest(data, trial) -> float:
-    data = data.copy()
-
     rsi_window = trial.suggest_int('rsi_window', 5, 50)
     rsi_lower = trial.suggest_int('rsi_lower', 5, 35)
     rsi_upper = trial.suggest_int('rsi_upper', 65, 95)
     stop_loss = trial.suggest_float('stop_loss', 0.01, 0.15)
     take_profit = trial.suggest_float('take_profit', 0.01, 0.15)
-    n_shares = trial.suggest_int('n_shares', 50, 500)
+    n_shares = trial.suggest_float('n_shares', 0, 5)
 
     buy_signals, sell_signals = rsi_signals(data, rsi_window, rsi_lower, rsi_upper)
     
-    historic = data.dropna()
+    historic = data.copy()
+    historic = historic.dropna()
     historic['buy_signal'] = buy_signals
     historic['sell_signal'] = sell_signals
 
@@ -115,11 +115,15 @@ def backtest(data, trial) -> float:
     active_long_positions = []
     active_short_positions = []
 
-    return (cash / 1_000_000) - 1
+    df = pd.DataFrame({
+        'Portfolio Value': portfolio_value
+    })
 
-def params_backtest(data, params):
-    data = data.copy()
+    calmar = calmar_ratio(df['Portfolio Value'])
 
+    return calmar #(cash / 1_000_000) - 1
+
+def params_backtest(data, params, cash):
     window = params['rsi_window']
     lower = params['rsi_lower']
     upper = params['rsi_upper']
@@ -128,11 +132,11 @@ def params_backtest(data, params):
     n_shares = params['n_shares']
 
     COM = 0.125 / 100
-    cash = 1_000_000
 
     buy_signals, sell_signals = rsi_signals(data, window, lower, upper)
 
-    historic = data.dropna()
+    historic = data.copy()
+    historic = historic.dropna()
     historic['buy_signal'] = buy_signals
     historic['sell_signal'] = sell_signals
 
