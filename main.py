@@ -5,7 +5,7 @@ import optuna
 
 from utils import split
 from backtest import backtest, params_backtest
-from plots import plot_portfolio_value
+from plots import plot_portfolio_value, plot_test_validation
 from metrics import evaluate_metrics
 
 def main():
@@ -17,26 +17,50 @@ def main():
     train, test, validation = split(data)
 
     study = optuna.create_study(direction='maximize')
-    study.optimize(lambda trial: backtest(data, trial), n_trials=10, n_jobs=-1)
+    study.optimize(lambda trial: backtest(train, trial), n_trials=10, n_jobs=-1)
 
-    print("Best parameters:")
+    print("\033[1mBest parameters:\033[0m")
     print(study.best_params)
 
-    print("Best value:")
+    print("\033[1mBest value:\033[0m")
     print(study.best_value)
 
-    cash, portfolio_value = params_backtest(data, study.best_params, cash=1_000_000)
+    cash_train, portfolio_value_train = params_backtest(train, study.best_params, cash=1_000_000)
 
-    print("Cash:")
-    print(cash)
+    print("\033[1mTrain results:\033[0m")
 
-    print("Portfolio value:")
-    print(portfolio_value[-1])
+    print("Cash: ", cash_train)
+
+    print("Portfolio value: ", portfolio_value_train[-1])
 
     print("Performance metrics:")
-    print(evaluate_metrics(pd.Series(portfolio_value)))
+    print(evaluate_metrics(pd.Series(portfolio_value_train)))
 
-    plot_portfolio_value(portfolio_value)
+    cash_test, portfolio_value_test = params_backtest(test, study.best_params, cash=1_000_000)
+
+    print("\033[1mTest results:\033[0m")
+
+    print("Cash: ", cash_test)
+
+    print("Portfolio value: ", portfolio_value_test[-1])
+
+    print("Performance metrics:")
+    print(evaluate_metrics(pd.Series(portfolio_value_test)))
+
+    cash_validation, portfolio_value_validation = params_backtest(validation, study.best_params, cash_test)
+
+    print("\033[1mValidation results:\033[0m")
+
+    print("Cash: ", cash_validation)
+
+    print("Portfolio value: ", portfolio_value_validation[-1])
+
+    print("Performance metrics:")
+    print(evaluate_metrics(pd.Series(portfolio_value_validation)))
+
+    plot_portfolio_value(portfolio_value_train)
+    
+    plot_test_validation(portfolio_value_test, portfolio_value_validation, test, validation)
 
 if __name__ == "__main__":
     main()

@@ -2,7 +2,7 @@ import pandas as pd
 import ta
 
 from models import Operation
-from signals import rsi_signals
+from signals import rsi_signals, ema_signals, macd_signals, combined_signals
 from metrics import max_drawdown, calmar_ratio
 
 def get_portfolio_value(cash: float, long_ops: list[Operation], short_ops: list[Operation], current_price:float, n_shares: int, COM: float) -> float:
@@ -20,14 +20,31 @@ def get_portfolio_value(cash: float, long_ops: list[Operation], short_ops: list[
     return val
 
 def backtest(data, trial) -> float:
+    # RSI
     rsi_window = trial.suggest_int('rsi_window', 5, 50)
     rsi_lower = trial.suggest_int('rsi_lower', 5, 35)
     rsi_upper = trial.suggest_int('rsi_upper', 65, 95)
+
+    # EMA
+    ema_short_window = trial.suggest_int('ema_short_window', 5, 50)
+    ema_long_window = trial.suggest_int('ema_long_window', 100, 300)
+
+    # MACD
+    macd_short_window = trial.suggest_int('macd_short_window', 5, 50)
+    macd_long_window = trial.suggest_int('macd_long_window', 100, 300)
+    macd_signal_window = trial.suggest_int('macd_signal_window', 5, 50)
+
+    # Trade params
     stop_loss = trial.suggest_float('stop_loss', 0.01, 0.15)
     take_profit = trial.suggest_float('take_profit', 0.01, 0.15)
     n_shares = trial.suggest_float('n_shares', 0, 5)
 
-    buy_signals, sell_signals = rsi_signals(data, rsi_window, rsi_lower, rsi_upper)
+    # Signals
+    rsi_buy_signals, rsi_sell_signals = rsi_signals(data, rsi_window, rsi_lower, rsi_upper)
+    ema_buy_signals, ema_sell_signals = ema_signals(data, ema_short_window, ema_long_window)
+    macd_buy_signals, macd_sell_signals = macd_signals(data, macd_short_window, macd_long_window, macd_signal_window)
+
+    buy_signals, sell_signals = combined_signals(rsi_buy_signals, rsi_sell_signals, ema_buy_signals, ema_sell_signals, macd_buy_signals, macd_sell_signals)
     
     historic = data.copy()
     historic = historic.dropna()
@@ -115,26 +132,39 @@ def backtest(data, trial) -> float:
     active_long_positions = []
     active_short_positions = []
 
-    df = pd.DataFrame({
-        'Portfolio Value': portfolio_value
-    })
-
+    df = pd.DataFrame({'Portfolio Value': portfolio_value})
     calmar = calmar_ratio(df['Portfolio Value'])
 
-    return calmar #(cash / 1_000_000) - 1
+    return calmar
 
 def params_backtest(data, params, cash):
-    window = params['rsi_window']
-    lower = params['rsi_lower']
-    upper = params['rsi_upper']
+    # RSI
+    rsi_window = params['rsi_window']
+    rsi_lower = params['rsi_lower']
+    rsi_upper = params['rsi_upper']
+
+    # EMA
+    ema_short_window = params['ema_short_window']
+    ema_long_window = params['ema_long_window']
+
+    # MACD
+    macd_short_window = params['macd_short_window']
+    macd_long_window = params['macd_long_window']
+    macd_signal_window = params['macd_signal_window']
+
+    # Trade params
     SL = params['stop_loss']
     TP = params['take_profit']
     n_shares = params['n_shares']
-
     COM = 0.125 / 100
 
-    buy_signals, sell_signals = rsi_signals(data, window, lower, upper)
+    # Signals
+    rsi_buy_signals, rsi_sell_signals = rsi_signals(data, rsi_window, rsi_lower, rsi_upper)
+    ema_buy_signals, ema_sell_signals = ema_signals(data, ema_short_window, ema_long_window)
+    macd_buy_signals, macd_sell_signals = macd_signals(data, macd_short_window, macd_long_window, macd_signal_window)
 
+    buy_signals, sell_signals = combined_signals(rsi_buy_signals, rsi_sell_signals, ema_buy_signals, ema_sell_signals, macd_buy_signals, macd_sell_signals)
+    
     historic = data.copy()
     historic = historic.dropna()
     historic['buy_signal'] = buy_signals
