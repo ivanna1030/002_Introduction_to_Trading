@@ -17,7 +17,7 @@ def main():
     train, test, validation = split(data)
 
     study = optuna.create_study(direction='maximize')
-    study.optimize(lambda trial: backtest(train, trial), n_trials=10, n_jobs=-1)
+    study.optimize(lambda trial: backtest(train, trial), n_trials=50, n_jobs=-1)
 
     print("\033[1mBest parameters:\033[0m")
     print(study.best_params)

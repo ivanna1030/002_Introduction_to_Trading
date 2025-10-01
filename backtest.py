@@ -5,11 +5,13 @@ from models import Operation
 from signals import rsi_signals, ema_signals, macd_signals, combined_signals
 from metrics import max_drawdown, calmar_ratio
 
-def get_portfolio_value(cash: float, long_ops: list[Operation], short_ops: list[Operation], current_price:float, n_shares: int, COM: float) -> float:
+def get_portfolio_value(cash: float, long_ops: list[Operation], short_ops: list[Operation], current_price:float, COM: float) -> float:
     val = cash
 
     # Add long positions value
-    val += len(long_ops) * current_price * n_shares * (1 - COM)
+    for pos in long_ops:
+        pnl = current_price * pos.n_shares * (1 - COM)
+        val += pnl
 
     # Add short positions value
     for pos in short_ops:
@@ -37,7 +39,8 @@ def backtest(data, trial) -> float:
     # Trade params
     stop_loss = trial.suggest_float('stop_loss', 0.01, 0.15)
     take_profit = trial.suggest_float('take_profit', 0.01, 0.15)
-    n_shares = trial.suggest_float('n_shares', 0, 5)
+    #n_shares = trial.suggest_float('n_shares', 0, 5)
+    available_cash_pct = trial.suggest_float('available_cash_pct', 0.1, 0.2)
 
     # Signals
     rsi_buy_signals, rsi_sell_signals = rsi_signals(data, rsi_window, rsi_lower, rsi_upper)
@@ -54,7 +57,7 @@ def backtest(data, trial) -> float:
     COM = 0.125 / 100
     SL = stop_loss
     TP = take_profit
-    n_shares = n_shares
+    #n_shares = n_shares
 
     active_long_positions: list[Operation] = []
     active_short_positions: list[Operation] = []
@@ -83,6 +86,7 @@ def backtest(data, trial) -> float:
         # --- BUY ---
         # Check signal
         if row.buy_signal:
+            n_shares = cash * available_cash_pct / row.Close
             # Do we have enough cash?
             if cash > row.Close * n_shares * (1 + COM):
                 # Discount the cost
@@ -102,6 +106,7 @@ def backtest(data, trial) -> float:
         # --- SELL ---
         # Check signal
         if row.sell_signal:
+            n_shares = cash * available_cash_pct / row.Close
             # Do we have enough cash?
             position_value = row.Close * n_shares * (1 + COM)
             if cash > position_value:
@@ -117,16 +122,16 @@ def backtest(data, trial) -> float:
                     )
                 )
                 
-        portfolio_value.append(get_portfolio_value(cash, active_long_positions, active_short_positions, row.Close, n_shares, COM))
+        portfolio_value.append(get_portfolio_value(cash, active_long_positions, active_short_positions, row.Close, COM))
 
     # Close long positions        
-    cash += row.Close * len(active_long_positions) * n_shares * (1 - COM)
+    for position in active_long_positions:
+        pnl = (row.Close - position.price) * position.n_shares * (1 - COM)
+        cash += row.Close * position.n_shares * (1 - COM)
 
     # Close short positions
     for position in active_short_positions:
-        cover_cost = row.Close * position.n_shares * (1 + COM)
-        initial_sell = position.price * position.n_shares
-        pnl = initial_sell - cover_cost
+        pnl = (position.price - row.Close) * position.n_shares * (1 - COM)
         cash += pnl
     
     active_long_positions = []
@@ -155,7 +160,8 @@ def params_backtest(data, params, cash):
     # Trade params
     SL = params['stop_loss']
     TP = params['take_profit']
-    n_shares = params['n_shares']
+    #n_shares = params['n_shares']
+    available_cash_pct = params['available_cash_pct']
     COM = 0.125 / 100
 
     # Signals
@@ -207,6 +213,7 @@ def params_backtest(data, params, cash):
         # --- BUY ---
         # Check signal
         if row.buy_signal:
+            n_shares = cash * available_cash_pct / row.Close
             # Do we have enough cash?
             if cash > row.Close * n_shares * (1 + COM):
                 # Discount the cost
@@ -226,6 +233,7 @@ def params_backtest(data, params, cash):
         # --- SELL ---
         # Check signal
         if row.sell_signal:
+            n_shares = cash * available_cash_pct / row.Close
             # Do we have enough cash?
             position_value = row.Close * n_shares * (1 + COM)
             if cash > position_value:
@@ -241,7 +249,7 @@ def params_backtest(data, params, cash):
                     )
                 )
                 
-        portfolio_value.append(get_portfolio_value(cash, active_long_positions, active_short_positions, row.Close, n_shares, COM))
+        portfolio_value.append(get_portfolio_value(cash, active_long_positions, active_short_positions, row.Close, COM))
 
     # Close long positions        
     for position in active_long_positions:
@@ -254,9 +262,7 @@ def params_backtest(data, params, cash):
 
     # Close short positions
     for position in active_short_positions:
-        cover_cost = row.Close * position.n_shares * (1 + COM)
-        initial_sell = position.price * position.n_shares
-        pnl = initial_sell - cover_cost
+        pnl = (position.price - row.Close) * position.n_shares * (1 - COM)
         cash += pnl
         if pnl >= 0:
             positive_trades += 1
