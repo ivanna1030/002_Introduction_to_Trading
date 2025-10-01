@@ -1,23 +1,20 @@
 # Entrypoint
 import pandas as pd
-import matplotlib.pyplot as plt
 import optuna
 
-from utils import split
-from backtest import backtest, params_backtest
+from utils import modify_data, split
+from backtest import params_backtest, walk_forward
 from plots import plot_portfolio_value, plot_test_validation
 from metrics import evaluate_metrics
 
 def main():
     data = pd.read_csv('data/Binance_BTCUSDT_1h.csv').dropna()
-    data = data.rename(columns={'Date': 'Datetime'})
-    data['Datetime'] = pd.to_datetime(data['Datetime'], errors='coerce', dayfirst=True)
-    data = data.iloc[::-1].reset_index(drop=True)
+    data = modify_data(data)
 
     train, test, validation = split(data)
 
     study = optuna.create_study(direction='maximize')
-    study.optimize(lambda trial: backtest(train, trial), n_trials=50, n_jobs=-1)
+    study.optimize(lambda trial: walk_forward(data, trial, n_splits=5), n_trials=50, n_jobs=-1)
 
     print("\033[1mBest parameters:\033[0m")
     print(study.best_params)
@@ -63,6 +60,17 @@ def main():
 
     print("Performance metrics:")
     print(evaluate_metrics(pd.Series(portfolio_value_validation)))
+
+    total_portfolio = portfolio_value_test + portfolio_value_validation
+
+    print("\033[1mPortfolio results:\033[0m")
+
+    print("Cash: ", cash_validation)
+
+    print("Portfolio value: ", portfolio_value_validation[-1])
+
+    print("Performance metrics:")
+    print(evaluate_metrics(pd.Series(total_portfolio)))
 
     plot_portfolio_value(portfolio_value_train)
     

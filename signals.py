@@ -35,12 +35,12 @@ def macd_signals(data: pd.DataFrame, short_window: int, long_window: int, signal
     signal_line = macd.macd_signal()
 
     # Fijo
-    #buy_signal = macd_line > signal_line
-    #sell_signal = macd_line < signal_line
+    buy_signal = macd_line > signal_line
+    sell_signal = macd_line < signal_line
 
     # Cruce
-    buy_signal = (macd_line > signal_line) & (macd_line.shift(1) <= signal_line.shift(1))
-    sell_signal = (macd_line < signal_line) & (macd_line.shift(1) >= signal_line.shift(1))
+    #buy_signal = (macd_line > signal_line) & (macd_line.shift(1) <= signal_line.shift(1))
+    #sell_signal = (macd_line < signal_line) & (macd_line.shift(1) >= signal_line.shift(1))
 
     return buy_signal, sell_signal
 

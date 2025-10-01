@@ -1,5 +1,6 @@
 import pandas as pd
-import ta
+import numpy as np
+from sklearn.model_selection import TimeSeriesSplit
 
 from models import Operation
 from signals import rsi_signals, ema_signals, macd_signals, combined_signals
@@ -16,8 +17,9 @@ def get_portfolio_value(cash: float, long_ops: list[Operation], short_ops: list[
     # Add short positions value
     for pos in short_ops:
         pnl = (pos.price - current_price) * pos.n_shares * (1 - COM)
+        initial_sell = pos.price * pos.n_shares * (1 + COM)
 
-        val += pnl
+        val += pnl + initial_sell
 
     return val
 
@@ -40,7 +42,7 @@ def backtest(data, trial) -> float:
     stop_loss = trial.suggest_float('stop_loss', 0.01, 0.15)
     take_profit = trial.suggest_float('take_profit', 0.01, 0.15)
     #n_shares = trial.suggest_float('n_shares', 0, 5)
-    available_cash_pct = trial.suggest_float('available_cash_pct', 0.1, 0.2)
+    available_cash_pct = trial.suggest_float('available_cash_pct', 0.01, 0.1)
 
     # Signals
     rsi_buy_signals, rsi_sell_signals = rsi_signals(data, rsi_window, rsi_lower, rsi_upper)
@@ -76,10 +78,9 @@ def backtest(data, trial) -> float:
         # Close short positions
         for position in active_short_positions.copy():
             if row.Close < position.take_profit or row.Close > position.stop_loss:
-                cover_cost = row.Close * position.n_shares * (1 + COM)
-                initial_sell = position.price * position.n_shares
-                pnl = initial_sell - cover_cost
-                cash += pnl
+                pnl = (position.price - row.Close) * position.n_shares * (1 - COM)
+                initial_sell = position.price * position.n_shares * (1 + COM)
+                cash += pnl + initial_sell
                 active_short_positions.remove(position)
                 continue
 
@@ -132,8 +133,9 @@ def backtest(data, trial) -> float:
     # Close short positions
     for position in active_short_positions:
         pnl = (position.price - row.Close) * position.n_shares * (1 - COM)
-        cash += pnl
-    
+        initial_sell = position.price * position.n_shares * (1 + COM)
+        cash += pnl + initial_sell
+
     active_long_positions = []
     active_short_positions = []
 
@@ -199,10 +201,9 @@ def params_backtest(data, params, cash):
         # Close short positions
         for position in active_short_positions.copy():
             if row.Close < position.take_profit or row.Close > position.stop_loss:
-                cover_cost = row.Close * position.n_shares * (1 + COM)
-                initial_sell = position.price * position.n_shares
-                pnl = initial_sell - cover_cost
-                cash += pnl
+                pnl = (position.price - row.Close) * position.n_shares * (1 - COM)
+                initial_sell = position.price * position.n_shares * (1 + COM)
+                cash += pnl + initial_sell
                 if pnl >= 0:
                     positive_trades += 1
                 else:
@@ -263,7 +264,8 @@ def params_backtest(data, params, cash):
     # Close short positions
     for position in active_short_positions:
         pnl = (position.price - row.Close) * position.n_shares * (1 - COM)
-        cash += pnl
+        initial_sell = position.price * position.n_shares * (1 + COM)
+        cash += pnl + initial_sell
         if pnl >= 0:
             positive_trades += 1
         else:
@@ -275,3 +277,16 @@ def params_backtest(data, params, cash):
     win_rate = positive_trades / (positive_trades + negative_trades) if (positive_trades + negative_trades) > 0 else 0
 
     return cash, portfolio_value, win_rate
+
+def walk_forward(data, trial, n_splits=5):
+    tscv = TimeSeriesSplit(n_splits=n_splits)
+    results = []
+
+    for train_index, test_index in tscv.split(data):
+        train = data.iloc[train_index]
+        test = data.iloc[test_index]
+
+        result = backtest(test, trial)
+        results.append(result)
+
+    return np.mean(results)
