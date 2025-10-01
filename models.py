@@ -8,4 +8,3 @@ class Operation:
     take_profit: float
     n_shares: int
     type: str
-    
