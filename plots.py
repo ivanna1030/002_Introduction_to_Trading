@@ -14,10 +14,12 @@ def plot_test_validation(test_portfolio, validation_portfolio, test, validation)
         'Date': test['Datetime'].reset_index(drop=True),
         'Portfolio Value': test_portfolio
     })
+
     validation_df = pd.DataFrame({
         'Date': validation['Datetime'].reset_index(drop=True),
         'Portfolio Value': validation_portfolio
     })
+    
     plt.figure(figsize=(12, 6))
     plt.plot(test_df['Date'], test_df['Portfolio Value'], label='Test', color='red')
     plt.plot(validation_df['Date'], validation_df['Portfolio Value'], label='Validation', color='green')

@@ -45,6 +45,7 @@ def macd_signals(data: pd.DataFrame, short_window: int, long_window: int, signal
     return buy_signal, sell_signal
 
 def combined_signals(rsi_buy, rsi_sell, ema_buy, ema_sell, macd_buy, macd_sell):
+    # Indicators agreement
     buy_signal = rsi_buy.astype(int) + ema_buy.astype(int) + macd_buy.astype(int) >= 2
     sell_signal = rsi_sell.astype(int) + ema_sell.astype(int) + macd_sell.astype(int) >= 2
 

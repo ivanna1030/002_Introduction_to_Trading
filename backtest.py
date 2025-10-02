@@ -4,7 +4,7 @@ from sklearn.model_selection import TimeSeriesSplit
 
 from models import Operation
 from signals import rsi_signals, ema_signals, macd_signals, combined_signals
-from metrics import max_drawdown, calmar_ratio
+from metrics import calmar_ratio
 
 def get_portfolio_value(cash: float, long_ops: list[Operation], short_ops: list[Operation], current_price:float, COM: float) -> float:
     val = cash
@@ -41,7 +41,6 @@ def backtest(data, trial) -> float:
     # Trade params
     stop_loss = trial.suggest_float('stop_loss', 0.01, 0.15)
     take_profit = trial.suggest_float('take_profit', 0.01, 0.15)
-    #n_shares = trial.suggest_float('n_shares', 0, 5)
     available_cash_pct = trial.suggest_float('available_cash_pct', 0.01, 0.1)
 
     # Signals
@@ -56,11 +55,12 @@ def backtest(data, trial) -> float:
     historic['buy_signal'] = buy_signals
     historic['sell_signal'] = sell_signals
 
+    # Params
     COM = 0.125 / 100
     SL = stop_loss
     TP = take_profit
-    #n_shares = n_shares
 
+    # Backtest logic
     active_long_positions: list[Operation] = []
     active_short_positions: list[Operation] = []
 
@@ -71,12 +71,14 @@ def backtest(data, trial) -> float:
     for i, row in historic.iterrows():
         # Close long positions
         for position in active_long_positions.copy():
+            # Check take profit or stop loss
             if row.Close > position.take_profit or row.Close < position.stop_loss:
                 cash += row.Close * position.n_shares * (1 - COM)
                 active_long_positions.remove(position)
 
         # Close short positions
         for position in active_short_positions.copy():
+            # Check take profit or stop loss
             if row.Close < position.take_profit or row.Close > position.stop_loss:
                 pnl = (position.price - row.Close) * position.n_shares * (1 - COM)
                 initial_sell = position.price * position.n_shares * (1 + COM)
@@ -108,8 +110,8 @@ def backtest(data, trial) -> float:
         # Check signal
         if row.sell_signal:
             n_shares = cash * available_cash_pct / row.Close
-            # Do we have enough cash?
             position_value = row.Close * n_shares * (1 + COM)
+            # Do we have enough cash?
             if cash > position_value:
                 cash -= position_value
                 active_short_positions.append(
@@ -122,10 +124,11 @@ def backtest(data, trial) -> float:
                     type="SHORT"
                     )
                 )
-                
+        
+        # Add current portfolio value to the list
         portfolio_value.append(get_portfolio_value(cash, active_long_positions, active_short_positions, row.Close, COM))
 
-    # Close long positions        
+    # Close long positions
     for position in active_long_positions:
         pnl = (row.Close - position.price) * position.n_shares * (1 - COM)
         cash += row.Close * position.n_shares * (1 - COM)
@@ -139,6 +142,7 @@ def backtest(data, trial) -> float:
     active_long_positions = []
     active_short_positions = []
 
+    # Calculate and return Calmar ratio
     df = pd.DataFrame({'Portfolio Value': portfolio_value})
     calmar = calmar_ratio(df['Portfolio Value'])
 
@@ -162,7 +166,6 @@ def params_backtest(data, params, cash):
     # Trade params
     SL = params['stop_loss']
     TP = params['take_profit']
-    #n_shares = params['n_shares']
     available_cash_pct = params['available_cash_pct']
     COM = 0.125 / 100
 
@@ -178,6 +181,7 @@ def params_backtest(data, params, cash):
     historic['buy_signal'] = buy_signals
     historic['sell_signal'] = sell_signals
 
+    # Backtest logic
     active_long_positions: list[Operation] = []
     active_short_positions: list[Operation] = []
 
@@ -189,9 +193,11 @@ def params_backtest(data, params, cash):
     for i, row in historic.iterrows():
         # Close long positions
         for position in active_long_positions.copy():
+            # Check take profit or stop loss
             if row.Close > position.take_profit or row.Close < position.stop_loss:
                 pnl = (row.Close - position.price) * position.n_shares * (1 - COM)
                 cash += row.Close * position.n_shares * (1 - COM)
+                # Add to win/loss count
                 if pnl >= 0:
                     positive_trades += 1
                 else:
@@ -200,10 +206,12 @@ def params_backtest(data, params, cash):
 
         # Close short positions
         for position in active_short_positions.copy():
+            # Check take profit or stop loss
             if row.Close < position.take_profit or row.Close > position.stop_loss:
                 pnl = (position.price - row.Close) * position.n_shares * (1 - COM)
                 initial_sell = position.price * position.n_shares * (1 + COM)
                 cash += pnl + initial_sell
+                # Add to win/loss count
                 if pnl >= 0:
                     positive_trades += 1
                 else:
@@ -235,8 +243,8 @@ def params_backtest(data, params, cash):
         # Check signal
         if row.sell_signal:
             n_shares = cash * available_cash_pct / row.Close
-            # Do we have enough cash?
             position_value = row.Close * n_shares * (1 + COM)
+            # Do we have enough cash?
             if cash > position_value:
                 cash -= position_value
                 active_short_positions.append(
@@ -249,13 +257,15 @@ def params_backtest(data, params, cash):
                     type="SHORT"
                     )
                 )
-                
+        
+        # Add current portfolio value to the list
         portfolio_value.append(get_portfolio_value(cash, active_long_positions, active_short_positions, row.Close, COM))
 
     # Close long positions        
     for position in active_long_positions:
         pnl = (row.Close - position.price) * position.n_shares * (1 - COM)
         cash += row.Close * position.n_shares * (1 - COM)
+        # Add to win/loss count
         if pnl >= 0:
             positive_trades += 1
         else:
@@ -266,6 +276,7 @@ def params_backtest(data, params, cash):
         pnl = (position.price - row.Close) * position.n_shares * (1 - COM)
         initial_sell = position.price * position.n_shares * (1 + COM)
         cash += pnl + initial_sell
+        # Add to win/loss count
         if pnl >= 0:
             positive_trades += 1
         else:
@@ -274,18 +285,22 @@ def params_backtest(data, params, cash):
     active_long_positions = []
     active_short_positions = []
 
+    # Calculate win rate
     win_rate = positive_trades / (positive_trades + negative_trades) if (positive_trades + negative_trades) > 0 else 0
 
     return cash, portfolio_value, win_rate
 
 def walk_forward(data, trial, n_splits=5):
+    # Time series cross-validation
     tscv = TimeSeriesSplit(n_splits=n_splits)
     results = []
 
+    # Iterate over each split
     for train_index, test_index in tscv.split(data):
         train = data.iloc[train_index]
         test = data.iloc[test_index]
 
+        # Run backtest on the test set
         result = backtest(test, trial)
         results.append(result)
 

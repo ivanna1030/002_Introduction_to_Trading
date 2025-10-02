@@ -28,6 +28,8 @@ def main():
 
     print()
 
+    # Train
+
     cash_train, portfolio_value_train, win_rate_train = params_backtest(train, study.best_params, cash=1_000_000)
 
     print("\033[1mTrain results:\033[0m")
@@ -42,6 +44,8 @@ def main():
     print(evaluate_metrics(pd.Series(portfolio_value_train)))
 
     print()
+
+    # Test
 
     cash_test, portfolio_value_test, win_rate_test = params_backtest(test, study.best_params, cash=1_000_000)
 
@@ -58,6 +62,8 @@ def main():
 
     print()
 
+    # Validation
+
     cash_validation, portfolio_value_validation, win_rate_validation = params_backtest(validation, study.best_params, cash_test)
 
     print("\033[1mValidation results:\033[0m")
@@ -72,6 +78,8 @@ def main():
     print(evaluate_metrics(pd.Series(portfolio_value_validation)))
 
     print()
+
+    # Total portfolio (test + validation)
 
     total_portfolio = portfolio_value_test + portfolio_value_validation
 
@@ -88,6 +96,8 @@ def main():
 
     print("\033[1mReturns table:\033[0m")
     print(returns_table(total_portfolio, test, validation))
+
+    # Plots
 
     plot_portfolio_value(portfolio_value_train)
     
