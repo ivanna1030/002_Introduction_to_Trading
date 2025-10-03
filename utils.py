@@ -5,6 +5,7 @@ def modify_data(data: pd.DataFrame):
     data = data.rename(columns={'Date': 'Datetime'})
     data['Datetime'] = pd.to_datetime(data['Datetime'], errors='coerce', dayfirst=True)
     data = data.iloc[::-1].reset_index(drop=True)
+    data = data.drop_duplicates(subset=["Open", "High", "Low", "Close", "Volume BTC", "Volume USDT", "tradecount"]).reset_index(drop=True)
 
     return data
 
@@ -20,10 +21,8 @@ def split(data: pd.DataFrame):
 
     return train, test, validation
 
-def returns_table(portfolio, test_data, validation_data):
-    # Combine test and validation data
-    full_data = pd.concat([test_data, validation_data]).reset_index(drop=True)
-    portfolio = pd.DataFrame({'Datetime': full_data['Datetime'], 'Portfolio Value': portfolio})
+def returns_table(portfolio, data):
+    portfolio = pd.DataFrame({'Datetime': data['Datetime'].iloc[-len(portfolio):].reset_index(drop=True), 'Portfolio Value': portfolio})
 
     # Ensure Datetime is index and correct type
     portfolio = portfolio.copy()

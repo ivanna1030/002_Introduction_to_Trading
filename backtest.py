@@ -11,13 +11,13 @@ def get_portfolio_value(cash: float, long_ops: list[Operation], short_ops: list[
 
     # Add long positions value
     for pos in long_ops:
-        pnl = current_price * pos.n_shares * (1 - COM)
+        pnl = current_price * pos.n_shares
         val += pnl
 
     # Add short positions value
     for pos in short_ops:
-        pnl = (pos.price - current_price) * pos.n_shares * (1 - COM)
-        initial_sell = pos.price * pos.n_shares * (1 + COM)
+        pnl = (pos.price - current_price) * pos.n_shares
+        initial_sell = pos.price * pos.n_shares
 
         val += pnl + initial_sell
 
@@ -81,7 +81,7 @@ def backtest(data, trial) -> float:
             # Check take profit or stop loss
             if row.Close < position.take_profit or row.Close > position.stop_loss:
                 pnl = (position.price - row.Close) * position.n_shares * (1 - COM)
-                initial_sell = position.price * position.n_shares * (1 + COM)
+                initial_sell = position.price * position.n_shares
                 cash += pnl + initial_sell
                 active_short_positions.remove(position)
                 continue
@@ -90,10 +90,11 @@ def backtest(data, trial) -> float:
         # Check signal
         if row.buy_signal:
             n_shares = cash * available_cash_pct / row.Close
+            position_value = row.Close * n_shares * (1 + COM)
             # Do we have enough cash?
-            if cash > row.Close * n_shares * (1 + COM):
+            if cash > position_value:
                 # Discount the cost
-                cash -= row.Close * n_shares * (1 + COM)
+                cash -= position_value
                 # Save the operation as active position
                 active_long_positions.append(
                     Operation(
@@ -136,7 +137,7 @@ def backtest(data, trial) -> float:
     # Close short positions
     for position in active_short_positions:
         pnl = (position.price - row.Close) * position.n_shares * (1 - COM)
-        initial_sell = position.price * position.n_shares * (1 + COM)
+        initial_sell = position.price * position.n_shares
         cash += pnl + initial_sell
 
     active_long_positions = []
@@ -209,7 +210,7 @@ def params_backtest(data, params, cash):
             # Check take profit or stop loss
             if row.Close < position.take_profit or row.Close > position.stop_loss:
                 pnl = (position.price - row.Close) * position.n_shares * (1 - COM)
-                initial_sell = position.price * position.n_shares * (1 + COM)
+                initial_sell = position.price * position.n_shares
                 cash += pnl + initial_sell
                 # Add to win/loss count
                 if pnl >= 0:
@@ -223,10 +224,11 @@ def params_backtest(data, params, cash):
         # Check signal
         if row.buy_signal:
             n_shares = cash * available_cash_pct / row.Close
+            position_value = row.Close * n_shares * (1 + COM)
             # Do we have enough cash?
-            if cash > row.Close * n_shares * (1 + COM):
+            if cash > position_value:
                 # Discount the cost
-                cash -= row.Close * n_shares * (1 + COM)
+                cash -= position_value
                 # Save the operation as active position
                 active_long_positions.append(
                     Operation(
@@ -274,7 +276,7 @@ def params_backtest(data, params, cash):
     # Close short positions
     for position in active_short_positions:
         pnl = (position.price - row.Close) * position.n_shares * (1 - COM)
-        initial_sell = position.price * position.n_shares * (1 + COM)
+        initial_sell = position.price * position.n_shares
         cash += pnl + initial_sell
         # Add to win/loss count
         if pnl >= 0:

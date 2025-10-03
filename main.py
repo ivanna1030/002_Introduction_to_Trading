@@ -43,6 +43,9 @@ def main():
     print("Performance metrics:")
     print(evaluate_metrics(pd.Series(portfolio_value_train)))
 
+    print("Returns table:")
+    print(returns_table(portfolio_value_train, train))
+
     print()
 
     # Test
@@ -59,6 +62,9 @@ def main():
 
     print("Performance metrics:")
     print(evaluate_metrics(pd.Series(portfolio_value_test)))
+
+    print("Returns table:")
+    print(returns_table(portfolio_value_test, test))
 
     print()
 
@@ -77,10 +83,15 @@ def main():
     print("Performance metrics:")
     print(evaluate_metrics(pd.Series(portfolio_value_validation)))
 
+    print("Returns table:")
+    print(returns_table(portfolio_value_validation, validation))
+
     print()
 
     # Total portfolio (test + validation)
 
+    # Combine test and validation data
+    test_validation = pd.concat([test, validation]).reset_index(drop=True)
     total_portfolio = portfolio_value_test + portfolio_value_validation
 
     print("\033[1mPortfolio results:\033[0m")
@@ -92,10 +103,8 @@ def main():
     print("Performance metrics:")
     print(evaluate_metrics(pd.Series(total_portfolio)))
 
-    print()
-
-    print("\033[1mReturns table:\033[0m")
-    print(returns_table(total_portfolio, test, validation))
+    print("Returns table:")
+    print(returns_table(total_portfolio, test_validation))
 
     # Plots
 
