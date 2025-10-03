@@ -6,7 +6,20 @@ from models import Operation
 from signals import rsi_signals, ema_signals, macd_signals, combined_signals
 from metrics import calmar_ratio
 
-def get_portfolio_value(cash: float, long_ops: list[Operation], short_ops: list[Operation], current_price:float, COM: float) -> float:
+def get_portfolio_value(cash: float, long_ops: list[Operation], short_ops: list[Operation], current_price:float) -> float:
+    """
+    Calculate the total portfolio value including cash and open positions.
+    
+    Parameters:
+        cash (float): Current cash available.
+        long_ops (list[Operation]): List of active long operations.
+        short_ops (list[Operation]): List of active short operations.
+        current_price (float): Current price of the asset.
+
+    Returns:
+        float: Total portfolio value.
+    """
+    
     val = cash
 
     # Add long positions value
@@ -24,6 +37,17 @@ def get_portfolio_value(cash: float, long_ops: list[Operation], short_ops: list[
     return val
 
 def backtest(data, trial) -> float:
+    """
+    Backtest a trading strategy on historical data using given parameters to optimize hyperparameters.
+
+    Parameters:
+        data (pd.DataFrame): Historical market data.
+        trial (optuna.trial.Trial): Optuna trial object containing hyperparameters.
+    
+    Returns:
+        float: Calmar ratio of the backtest results.
+    """
+    
     # RSI
     rsi_window = trial.suggest_int('rsi_window', 5, 50)
     rsi_lower = trial.suggest_int('rsi_lower', 5, 35)
@@ -127,7 +151,7 @@ def backtest(data, trial) -> float:
                 )
         
         # Add current portfolio value to the list
-        portfolio_value.append(get_portfolio_value(cash, active_long_positions, active_short_positions, row.Close, COM))
+        portfolio_value.append(get_portfolio_value(cash, active_long_positions, active_short_positions, row.Close))
 
     # Close long positions
     for position in active_long_positions:
@@ -150,6 +174,18 @@ def backtest(data, trial) -> float:
     return calmar
 
 def params_backtest(data, params, cash):
+    """
+    Backtest a trading strategy on historical data using optimized hyperparameters.
+    
+    Parameters:
+        data (pd.DataFrame): Historical market data.
+        params (dict): Dictionary of hyperparameters.
+        cash (float): Initial cash available.
+
+    Returns:
+        tuple: Final cash, portfolio value history, and win rate.
+    """
+    
     # RSI
     rsi_window = params['rsi_window']
     rsi_lower = params['rsi_lower']
@@ -261,7 +297,7 @@ def params_backtest(data, params, cash):
                 )
         
         # Add current portfolio value to the list
-        portfolio_value.append(get_portfolio_value(cash, active_long_positions, active_short_positions, row.Close, COM))
+        portfolio_value.append(get_portfolio_value(cash, active_long_positions, active_short_positions, row.Close))
 
     # Close long positions        
     for position in active_long_positions:
@@ -293,6 +329,18 @@ def params_backtest(data, params, cash):
     return cash, portfolio_value, win_rate
 
 def walk_forward(data, trial, n_splits=5):
+    """
+    Perform walk-forward optimization using time series cross-validation.
+    
+    Parameters:
+        data (pd.DataFrame): Historical market data.
+        trial (optuna.trial.Trial): Optuna trial object containing hyperparameters.
+        n_splits (int): Number of splits for time series cross-validation.
+    
+    Returns:
+        float: Average Calmar ratio across all splits.
+    """
+    
     # Time series cross-validation
     tscv = TimeSeriesSplit(n_splits=n_splits)
     results = []

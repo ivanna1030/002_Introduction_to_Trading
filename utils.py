@@ -1,6 +1,16 @@
 import pandas as pd
 
 def modify_data(data: pd.DataFrame):
+    """
+    Modify and clean the input data.
+    
+    Parameters:
+        data (pd.DataFrame): Raw market data.
+    
+    Returns:
+        pd.DataFrame: Cleaned and modified market data.
+    """
+
     data = data.copy()
     data = data.rename(columns={'Date': 'Datetime'})
     data['Datetime'] = pd.to_datetime(data['Datetime'], errors='coerce', dayfirst=True)
@@ -10,6 +20,16 @@ def modify_data(data: pd.DataFrame):
     return data
 
 def split(data: pd.DataFrame):
+    """
+    Split the data into training, testing, and validation sets.
+    
+    Parameters:
+        data (pd.DataFrame): Cleaned market data.
+
+    Returns:
+        tuple: (train, test, validation) DataFrames.
+    """
+    
     # 60% train, 20% test, 20% validation
     train_size = int(len(data) * 0.6)
     test_size = int(len(data) * 0.2)
@@ -22,6 +42,17 @@ def split(data: pd.DataFrame):
     return train, test, validation
 
 def returns_table(portfolio, data):
+    """
+    Generate a returns table showing monthly, quarterly, and annual returns.
+    
+    Parameters:
+        portfolio (list or pd.Series): Portfolio values over time.
+        data (pd.DataFrame): Market data with datetime information.
+
+    Returns:
+        pd.DataFrame: DataFrame containing monthly, quarterly, and annual returns.
+    """
+    
     portfolio = pd.DataFrame({'Datetime': data['Datetime'].iloc[-len(portfolio):].reset_index(drop=True), 'Portfolio Value': portfolio})
 
     # Ensure Datetime is index and correct type
