@@ -108,6 +108,19 @@ def evaluate_metrics(portfolio_values: pd.Series) -> pd.DataFrame:
     return pd.DataFrame([metrics], index=['Value'])
 
 def win_rate(win_rate_test, total_trades_test, win_rate_validation, total_trades_validation):
+    """
+    Calculate the total win rate from test and validation win rates and total trades.
+
+    Parameters:
+        win_rate_test (float): Win rate from the test set.
+        total_trades_test (int): Total trades from the test set.
+        win_rate_validation (float): Win rate from the validation set.
+        total_trades_validation (int): Total trades from the validation set.
+
+    Returns:
+        float: Combined win rate.
+    """
+    
     total_wins = (win_rate_test * total_trades_test) + (win_rate_validation * total_trades_validation)
     total_trades = total_trades_test + total_trades_validation
     total_win_rate = total_wins / total_trades if total_trades > 0 else 0
