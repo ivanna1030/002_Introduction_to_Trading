@@ -1,20 +1,24 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def plot_portfolio_value(portfolio_values):
+def plot_portfolio_value(portfolio_values, section):
     """
     Plot the portfolio value over time.
     
     Parameters:
         portfolio_values (list or pd.Series): Portfolio values over time.
+        section (str): The section of the data (train, test, validation).
 
     Returns:
         None
     """
     
+    colors = {'train': 'blue', 'test': 'red', 'validation': 'green'}
+    color = colors[section]
+    
     plt.figure(figsize=(12, 6))
-    plt.plot(portfolio_values)
-    plt.title('Portfolio value over time (train)')
+    plt.plot(portfolio_values, color=color)
+    plt.title(f'Portfolio value over time ({section})')
     plt.xlabel('Time')
     plt.ylabel('Portfolio value')
     plt.show()

@@ -113,8 +113,9 @@ def main():
 
     # Plots
 
-    plot_portfolio_value(portfolio_value_train)
-    
+    plot_portfolio_value(portfolio_value_train, 'train')
+    plot_portfolio_value(portfolio_value_test, 'test')
+    plot_portfolio_value(portfolio_value_validation, 'validation')
     plot_test_validation(portfolio_value_test, portfolio_value_validation, test, validation)
 
 if __name__ == "__main__":
