@@ -183,7 +183,7 @@ def params_backtest(data, params, cash):
         cash (float): Initial cash available.
 
     Returns:
-        tuple: Final cash, portfolio value history, and win rate.
+        tuple: Final cash, portfolio value history, win rate, and total trades.
     """
     
     # RSI
@@ -325,8 +325,9 @@ def params_backtest(data, params, cash):
 
     # Calculate win rate
     win_rate = positive_trades / (positive_trades + negative_trades) if (positive_trades + negative_trades) > 0 else 0
+    total_trades = positive_trades + negative_trades
 
-    return cash, portfolio_value, win_rate
+    return cash, portfolio_value, win_rate, total_trades
 
 def walk_forward(data, trial, n_splits=5):
     """
