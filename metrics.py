@@ -120,7 +120,7 @@ def win_rate(win_rate_test, total_trades_test, win_rate_validation, total_trades
     Returns:
         float: Combined win rate.
     """
-    
+
     total_wins = (win_rate_test * total_trades_test) + (win_rate_validation * total_trades_validation)
     total_trades = total_trades_test + total_trades_validation
     total_win_rate = total_wins / total_trades if total_trades > 0 else 0
